@@ -2,122 +2,246 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>能原谅我吗？</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2026马年大吉-新春抽奖</title>
     <style>
+        :root {
+            --primary-red: #d32f2f;
+            --gold: #ffd700;
+        }
+
         body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle, #b71c1c 0%, #7f0000 100%);
+            height: 100vh;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f9f9f9;
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-family: 'PingFang SC', sans-serif;
+            color: var(--gold);
         }
 
-        .container {
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .card {
+            position: relative;
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--gold);
+            border-radius: 20px;
+            padding: 40px 20px;
+            width: 80%;
+            max-width: 350px;
             text-align: center;
-            padding: 20px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
 
-        #gif-container {
-            width: 200px;
-            height: 200px;
-            margin-bottom: 20px;
+        .zodiac-icon {
+            font-size: 60px;
+            margin-bottom: 10px;
+            display: block;
         }
 
         h1 {
-            color: #333;
-            font-size: 1.5rem;
+            font-size: 1.8rem;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
-        .buttons {
-            display: flex;
+        .prize-pool {
+            font-size: 0.8rem;
+            color: #ffcccc;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        #draw-btn {
+            background: linear-gradient(45deg, var(--gold), #ffb300);
+            color: #7f0000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+
+        #draw-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
             justify-content: center;
             align-items: center;
-            margin-top: 30px;
-            gap: 20px;
         }
 
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s ease;
+        .modal-content {
+            background: #fff;
+            color: #333;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        #btn-yes {
-            background-color: #ff4d4f;
+        @keyframes pop {
+            0% { transform: scale(0.5); }
+            100% { transform: scale(1); }
+        }
+
+        .modal-content h2 { color: var(--primary-red); margin-top: 0; }
+        .close-btn {
+            margin-top: 20px;
+            background: var(--primary-red);
             color: white;
-        }
-
-        #btn-no {
-            background-color: #ddd;
-            color: #666;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <img id="gif-container" src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueGZueGZueGZueGZueGZueGZueGZueGZueGZueGZueGZueGZueCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/cLS1cfxvGOPVpf9g3y/giphy.gif" alt="委屈表情">
-        
-        <h1 id="question">能原谅我吗？🥺</h1>
+    <canvas id="fireworks"></canvas>
 
-        <div class="buttons">
-            <button id="btn-yes">能</button>
-            <button id="btn-no">不能</button>
+    <div class="card">
+        <span class="zodiac-icon">🐎</span>
+        <h1>2026 丙午马年</h1>
+        <p>驰骋千里 · 鸿运当头</p>
+        <div class="prize-pool">
+            奖池包含：520红包、美食券、奶茶券、<br>200红包、皮肤券、再来一次
+        </div>
+        <button id="draw-btn">开始抽奖</button>
+    </div>
+
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <h2 id="prize-text">恭喜你！</h2>
+            <p id="prize-name"></p>
+            <button class="close-btn" onclick="closeModal()">收下好运</button>
         </div>
     </div>
 
     <script>
-        let clickCount = 0;
-        const btnYes = document.getElementById('btn-yes');
-        const btnNo = document.getElementById('btn-no');
-        const question = document.getElementById('question');
-
-        // “不能”按钮点击后的文案变化
-        const noTexts = [
-            "？你认真的吗…", 
-            "要不再想想？", 
-            "不许选这个！", 
-            "我会很伤心的😭", 
-            "真的不行吗？",
-            "不行也得行！"
+        // 1. 抽奖逻辑
+        const prizes = [
+            { name: "520红包", weight: 30 },
+            { name: "美食券一张", weight: 20 },
+            { name: "奶茶券一张", weight: 10 },
+            { name: "200红包", weight: 20 },
+            { name: "皮肤券一张", weight: 10 },
+            { name: "再来一次", weight: 10 }
         ];
 
-        btnNo.addEventListener('click', () => {
-            clickCount++;
+        const drawBtn = document.getElementById('draw-btn');
+        const modal = document.getElementById('resultModal');
+        const prizeNameDisplay = document.getElementById('prize-name');
 
-            // 1. 让“能”按钮变大
-            const newSize = 1 + clickCount * 1.5; // 每次点击变大1.5倍
-            btnYes.style.transform = `scale(${newSize})`;
-            
-            // 2. 稍微向右推开“不能”按钮，腾出空间
-            const moveX = clickCount * 20;
-            btnNo.style.transform = `translateX(${moveX}px)`;
+        drawBtn.addEventListener('click', () => {
+            const random = Math.random() * 100;
+            let currentWeight = 0;
+            let result = "";
 
-            // 3. 更新“不能”按钮的文案
-            if (clickCount < noTexts.length) {
-                btnNo.innerHTML = noTexts[clickCount - 1];
-            } else {
-                btnNo.innerHTML = "好吧...你没得选了";
+            for (let prize of prizes) {
+                currentWeight += prize.weight;
+                if (random < currentWeight) {
+                    result = prize.name;
+                    break;
+                }
             }
+
+            // 弹出结果
+            prizeNameDisplay.innerText = `获得 [ ${result} ]`;
+            modal.style.display = 'flex';
+            createFireworks(); // 抽奖瞬间触发强力烟花
         });
 
-        btnYes.addEventListener('click', () => {
-            // 点击“能”后的反馈
-            document.body.innerHTML = `
-                <div style="text-align:center;">
-                    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueGZueGZueGZueGZueGZueGZueGZueGZueGZueGZueGZueGZueCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/K7S5S7v0oFh99M8W0I/giphy.gif">
-                    <h2 style="color: #ff4d4f;">我就知道你会原谅我的！❤️</h2>
-                </div>
-            `;
-        });
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        // 2. 烟花特效
+        const canvas = document.getElementById('fireworks');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.velocity = {
+                    x: (Math.random() - 0.5) * 8,
+                    y: (Math.random() - 0.5) * 8
+                };
+                this.alpha = 1;
+                this.friction = 0.95;
+            }
+            draw() {
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+            update() {
+                this.velocity.x *= this.friction;
+                this.velocity.y *= this.friction;
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.01;
+            }
+        }
+
+        function createFireworks() {
+            const colors = ['#ffd700', '#ff4d4f', '#ffffff', '#ffec3d'];
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height * 0.5;
+            for (let i = 0; i < 50; i++) {
+                particles.push(new Particle(x, y, colors[Math.floor(Math.random() * colors.length)]));
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(127, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, i) => {
+                if (p.alpha > 0) {
+                    p.update();
+                    p.draw();
+                } else {
+                    particles.splice(i, 1);
+                }
+            });
+            requestAnimationFrame(animate);
+        }
+
+        // 自动背景小烟花
+        setInterval(createFireworks, 2000);
+        animate();
     </script>
-
 </body>
 </html>
